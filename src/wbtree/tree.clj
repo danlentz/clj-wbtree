@@ -675,11 +675,43 @@
 ;; Aggregate Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn node-seq [n]
+(defn node-inorder-seq [n]
   (lazy-seq
     (when-not (null? n)
       (cons (node-least n)
-        (node-seq (node-remove-least n))))))
+        (node-inorder-seq (node-remove-least n))))))
   
+
+(defn node-reverse-seq [n]
+  (lazy-seq
+    (when-not (null? n)
+      (cons (node-greatest n)
+        (node-reverse-seq (node-remove-greatest n))))))
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Misc
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- make-integer-tree
+  ([size]           (reduce node-add nil (range size)))
+  ([start end]      (reduce node-add nil (range start end)))
+  ([start end step] (reduce node-add nil (range start end step))))
+
+
+;; (def i10 (make-integer-tree 10))
+;; (def i30 (make-integer-tree 20 30))
+;; (def i   (make-integer-tree 30))
+
+;; (map first (node-inorder-seq i))
+;;   => (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+;;       25 26 27 28 29)
+
+;; (map first (node-reverse-seq i))
+;;   => (29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8
+;;       7 6 5 4 3 2 1 0)
 
 
