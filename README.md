@@ -32,7 +32,7 @@ This is an implementation of a weight-balanced binary tree data
 -  MIT Scheme weight balanced tree as reimplemented by Yoichi Hirai
     and Kazuhiko Yamamoto using the revised non-variant algorithm recommended
     integer balance parameters from (Hirai/Yamomoto 2011).
-    <https://github.com/kazu-yamamoto/wttree>
+  
 
 ## Usage
 
