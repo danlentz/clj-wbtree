@@ -500,7 +500,7 @@
             (if (null? n)
               base
               (kvlr [k v l r] n
-                (fold (f k v (fold base r)) l))))]
+                (fold (f n (fold base r)) l))))]
     (fold base node)))
 
 
@@ -511,7 +511,7 @@
             (if (null? n)
               base
               (kvlr [k v l r] n
-                (fold (f k v (fold base l)) r))))]
+                (fold (f n (fold base l)) r))))]
     (fold base node)))
 
 
@@ -687,8 +687,6 @@
     (when-not (null? n)
       (cons (node-greatest n)
         (node-reverse-seq (node-remove-greatest n))))))
-
-
 
 
 
