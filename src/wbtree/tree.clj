@@ -4,18 +4,67 @@
   (:require [clojure.zip :as zip]))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Weight Balanced Functional Binary Tree (Hirai-Yamamoto Tree)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; This is an implementation of a weight-balanced binary tree data
+;;  structure based on the following references:
+;;
+;; --  Adams (1992)
+;;     'Implementing Sets Efficiently in a Functional Language'
+;;     Technical Report CSTR 92-10, University of Southampton.
+;;
+;; --  Hirai and Yamamoto (2011)
+;;     'Balancing Weight-Balanced Trees'
+;;     Journal of Functional Programming / 21 (3):
+;;     Pages 287-307
+;;
+;; --  Nievergelt and Reingold (1972)
+;;     'Binary Search Trees of Bounded Balance'
+;;     STOC '72 Proceedings
+;;     4th Annual ACM symposium on Theory of Computing
+;;     Pages 137-142 
+;;
+;; --  Driscoll, Sarnak, Sleator, and Tarjan (1989)
+;;     'Making Data Structures Persistent'
+;;     Journal of Computer and System Sciences Volume 38 Issue 1, February 1989
+;;     18th Annual ACM Symposium on Theory of Computing
+;;     Pages 86-124
+;;
+;; --  MIT Scheme weight balanced tree as reimplemented by Yoichi Hirai
+;;     and Kazuhiko Yamamoto using the revised non-variant algorithm recommended
+;;     integer balance parameters from (Hirai/Yamomoto 2011).
+;;     <https://github.com/kazu-yamamoto/wttree>
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Weight Balancing Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  
+;; +delta+:
+;;   The primary balancing rotation parameter that is used for the
+;;   determination whether two subtrees of a node are in balance or
+;;   require adjustment by means of a rotation operation.  The specific
+;;   rotation to be performed is determined by +gamma+.
 
 (def +delta+ 3)
+
+;; +gamma+:
+;;   The secondary balancing rotation parameter that is used for the
+;;   determination of whether a single or double rotation operation should
+;;   occur, once it has been decided based on +delta+ that a rotation is
+;;   indeed required.
+
 (def +gamma+ 2)
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Universal Comparator
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -37,7 +86,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Storage Model
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -46,7 +95,9 @@
 (defn leaf [] %leaf%)
 
 
-(defn null []
+(defn null
+  "a value which satisfies null?"
+  []
   (leaf))
 
 (defn null? [n]
@@ -61,7 +112,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Constituent Accessors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -91,28 +142,38 @@
 
 
 
-(defmacro kv [[ksym vsym] n & body]
+(defmacro kv
+  "destructure node n: key value"
+  [[ksym vsym] n & body]
   `(let [[~ksym ~vsym _ _ _] ~n] 
      ~@body))
 
 
-(defmacro kvlr [[ksym vsym lsym rsym] n & body]
+(defmacro kvlr
+  "destructure node n: key value left right"
+  [[ksym vsym lsym rsym] n & body]
   `(let [[~ksym ~vsym ~lsym ~rsym _] ~n]
      ~@body))
 
 
-(defmacro kvlrx [[ksym vsym lsym rsym xsym] n & body]
+(defmacro kvlrx
+  "destructure node n: key value left right size"
+  [[ksym vsym lsym rsym xsym] n & body]
   `(let [[~ksym ~vsym ~lsym ~rsym ~xsym] ~n]
      ~@body))
 
 
-
-(defn node-call [n f]
+(defn node-call 
+  "apply f to the destructured constituent values of n.
+   f is a function taking four parameters: K, V, L, and R,
+   where K is the key of NODE, V is the value of NODE, L is the left
+   subtree of NODE, and R is the right subtree of NODE."
+  [n f]
   (apply f (-kvlr n)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Fundamental Node Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -121,11 +182,19 @@
     0
     (-x n)))
 
-(defn node-weight [n]
+
+(defn node-weight
+  "returns node weight as appropriate for rotation calculations using
+   the 'revised non-variant algorithm' for weight balanced binary tree."
+  [n]
   (inc (node-size n)))
 
 
 (defn node-cons-enum
+  "Efficient mechanism to accomplish partial enumeration of
+   tree-structure into a seq representation without incurring the
+   overhead of operating over the entire tree.  Used internally for
+   implementation of higher-level collection api routines"
   ([n] (node-cons-enum n (list)))
   ([n enum]
      (if (null? n)
@@ -134,27 +203,77 @@
          (node-cons-enum l (list (tuple k v) r enum))))))
 
 
-(defn node-create [k v l r]
+(defn node-create
+  "Join left and right subtrees at root k/v.
+  Assumes all keys in l < k < all keys in r."
+  [k v l r]
   (node k v l r (+ 1 (node-size l) (node-size r))))
 
 
-(defn node-singleton [k v]
+(defn node-singleton 
+  "Create and return a newly allocated weight balanced
+  tree containing a single association, that value V with key K."
+  [k v]
   (node-create k v (null) (null) ))
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Tree Rotations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn rotate-single-left [ak av x r]
+
+(defn rotate-single-left
+  "Perform a single left rotation, moving Y, the left subtree of the
+  right subtree of A, into the left subtree (shown below).  This must
+  occur in order to restore proper balance when the weight of the left
+  subtree of node A is less then the weight of the right subtree of
+  node A multiplied by rotation coefficient +delta+ and the weight of
+  the left subtree of node B is less than the weight of the right subtree
+  of node B multiplied by rotation coefficient +gamma+
+ 
+                ,---,                                  ,---,
+                | A |                                  | B |
+                :---:                                  :---:
+               :     :                                :     :
+          ,---:       :---,                      ,---:       :---, 
+          | X |       | B |           =>         | A |       | Z | 
+          '---'       :---:                      :---:       '---'
+                 ,---:     :---,            ,---:     :---,
+                 | Y |     | Z |            | X |     | Y |
+                 '---'     '---'            '---'     '---'
+  "
+  [ak av x r]
   (node-call r
     (fn [bk bv y z]
       (node-create bk bv
         (node-create ak av x y) z))))
 
 
-(defn rotate-double-left [ak av x r]
+
+(defn rotate-double-left
+  "Perform a double left rotation, moving Y1, the left subtree of the
+  left subtree of the right subtree of A, into the left subtree (shown
+  below).  This must occur in order to restore proper balance when the
+  weight of the left subtree of node A is less then the weight of the
+  right subtree of node A multiplied by rotation coefficient +delta+
+  and the weight of the left subtree of node B is greater than or equal
+  to the weight of the right subtree of node B multiplied by rotation
+  coefficient +gamma+.
+  
+                ,---,                                    ,---,             
+                | A |                                    | B |             
+             ___:---:___                             ____:---:____          
+        ,---:           :---,                   ,---:             :---,       
+        | X |           | C |                   | A |             | C |       
+        '---'           :---:         =>        :---:             :---:
+                   ,---:     :---,         ,---:     :---,   ,---:     :---,  
+                   | B |     | Z |         | X |     | y1|   | y2|     | Z |  
+                   :---:     '---'         '---'     '---'   '---'     '---'
+              ,---:     :---,   
+              | y1|     | y2|  
+              '---'     '---'
+  "
+  [ak av x r]
   (node-call r
     (fn [ck cv b z]
       (node-call b
@@ -164,13 +283,56 @@
             (node-create ck cv y2 z)))))))
 
 
-(defn rotate-single-right [bk bv l z]
+(defn rotate-single-right
+  "Perform a single right rotation, moving Y, the right subtree of the
+  left subtree of B, into the right subtree (shown below).  This must
+  occur in order to restore proper balance when the weight of the right
+  subtree of node B is less then the weight of the left subtree of
+  node B multiplied by rotation coefficient +delta+ and the weight of the
+  right subtree of node A is less than the weight of the left subtree
+  of node A multiplied by rotation coefficient +gamma+.
+  
+                ,---,                                  ,---,             
+                | B |                                  | A |             
+                :---:                                  :---:             
+               :     :                                :     :            
+          ,---:       :---,                      ,---:       :---,       
+          | A |       | Z |          =>          | X |       | B |       
+          :---:       '---'                      '---'       :---:       
+     ,---:     :---,                                    ,---:     :---,  
+     | X |     | Y |                                    | Y |     | Z |  
+     '---'     '---'                                    '---'     '---'  
+  "
+  [bk bv l z]
   (node-call l
     (fn [ak av x y]
       (node-create ak av x (node-create bk bv y z)))))
 
 
-(defn rotate-double-right [ck cv l z]
+(defn rotate-double-right
+  "Perform a double right rotation, moving Y2, the right subtree of
+  the right subtree of the left subtree of C, into the right
+  subtree (shown below).  This must occur in order to restore proper
+  balance when the weight of the right subtree of node C is less then
+  the weight of the left subtree of node C multiplied by rotation
+  coefficient +delta+ and the weight of the right subtree of node B
+  is greater than or equal to the weight of the left subtree of node B
+  multiplied by rotation coefficient +gamma+.
+  
+                ,---,                                    ,---,             
+                | C |                                    | B |             
+             ___:---:___                             ____:---:____          
+        ,---:           :---,                   ,---:             :---,       
+        | A |           | Z |                   | A |             | C |       
+        :---:           '---'        =>         :---:             :---:
+   ,---:     :---,                         ,---:     :---,   ,---:     :---,  
+   | X |     | B |                         | X |     | y1|   | y2|     | Z |  
+   '---'     :---:                         '---'     '---'   '---'     '---'
+        ,---:     :---,   
+        | y1|     | y2|  
+        '---'     '---'
+  "
+  [ck cv l z]
   (node-call l
     (fn [ak av x b]
       (node-call b
@@ -181,11 +343,18 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Fundamental Tree Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn node-join [k v l r]
+(defn node-join
+  "Join left and right subtrees at root k/v, performing a single or
+  double rotation to balance the resulting tree, if needed.  Assumes
+  all keys in l < k < all keys in r, and the relative weight balance
+  of the left and right subtrees is such that no more than one
+  single/double rotation will result in each subtree being less than
+  +delta+ times the weight of the other."
+  [k v l r]
   (let [lw (node-weight l)
         rw (node-weight r)]
     (cond
@@ -233,21 +402,28 @@
                   true                  (node-create k v l r)))))
 
 
-(defn node-least [n]
+(defn node-least 
+  "Return the node containing the minimum key of the tree rooted at n"
+  [n]
   (cond
     (null? n)   (util/exception "least: empty tree")
     (null? (-l n)) n
     true           (node-least (-l n))))
 
 
-(defn node-greatest [n]
+(defn node-greatest
+  "Return the node containing the minimum key of the tree rooted at n"
+  [n]
   (cond
     (null? n)   (util/exception "greatest: empty tree")
     (null? (-r n)) n
     true           (node-greatest (-r n))))
 
 
-(defn node-remove-least [n]
+(defn node-remove-least
+  "Return a tree the same as the one rooted at n, with the node
+  containing the minimum key removed. See node-least."
+  [n]
   (cond
     (null? n)       (util/exception "remove-least: empty tree")
     (null? (-l n))  (-r n)
@@ -255,7 +431,10 @@
                       (node-remove-least (-l n)) (-r n))))
 
 
-(defn node-remove-greatest [n]
+(defn node-remove-greatest
+  "Return a tree the same as the one rooted at n, with the node
+  containing the maximum key removed. See node-greatest."
+  [n]
   (cond
     (null? n)       (util/exception "remove-greatest: empty tree")
     (null? (-r n))  (-l n)
@@ -263,7 +442,13 @@
                       (node-remove-greatest (-r n)))))
 
 
-(defn node-concat2 [l r]
+(defn node-concat2
+  "Join two trees, the left rooted at l, and the right at r,
+  performing a single balancing operation on the resulting tree, if
+  needed. Assumes all keys in l are smaller than all keys in r, and
+  the relative balance of l and r is such that no more than one rotation
+  operation will be required to balance the resulting tree"
+  [l r]
   (cond
     (null? l) r
     (null? r) l
@@ -292,7 +477,11 @@
           true              (node-concat2 l r))))))
 
 
-(defn node-find [n k]
+(defn node-find
+  "Find k (if exists) in only d comparisons (d is depth of tree)
+   rather than the traditional compare/low compare/high which takes on
+   avg (* 1.5 (- d 1))"
+  [n k]
   (letfn [(srch [this best]
             (cond
               (null? this)            best
@@ -304,7 +493,9 @@
           best)))))
 
 
-(defn node-inorder-fold [f base n]
+(defn node-inorder-fold
+  "fold left"
+  [f base n]
   (letfn [(fold [base n]
             (if (null? n)
               base
@@ -313,7 +504,9 @@
     (fold base node)))
 
 
-(defn node-reverse-fold [f base n]
+(defn node-reverse-fold
+  "fold right"
+  [f base n]
   (letfn [(fold [base n]
             (if (null? n)
               base
@@ -322,7 +515,9 @@
     (fold base node)))
 
 
-(defn node-iter [n f]
+(defn node-iter
+  "For the side-effect, apply f to each node of the tree rooted at n"
+  [n f]
   (if (null? n)
     nil
     (kvlr [_ _ l r] n
@@ -331,7 +526,10 @@
       (node-iter r f))))
 
 
-(defn for-all-nodes [n p f]
+(defn for-all-nodes
+  "For the side-effect, apply f to each node of the tree rooted at
+  n for which the predicate function returns a logically true value"
+  [n p f]
   (node-iter n (fn [n] (when (p n) (f n)))))
 
 
@@ -353,7 +551,12 @@
     true                 (-r n)))
 
 
-(defn node-split [n k]
+(defn node-split
+  "returns a triple (l present r) where: l is the set of elements of
+  n that are < k, r is the set of elements of n that are > k, present
+  is false if n contains no element equal to k, or (k v) if n contains
+  an element with key equal to k"
+  [n k]
   (if (null? n)
     [nil nil nil]
     (kvlr [ak v l r] n
@@ -368,7 +571,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Fundamental Set Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -437,7 +640,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+;; Fundamental Vector Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
