@@ -32,7 +32,25 @@ This is an implementation of a weight-balanced binary tree data
 -  MIT Scheme weight balanced tree as reimplemented by Yoichi Hirai
     and Kazuhiko Yamamoto using the revised non-variant algorithm recommended
     integer balance parameters from (Hirai/Yamomoto 2011).
-  
+
+## Features
+
+Some unique features of a weight-balanced binary-tree as compared with
+other binary tree algorithms:
+
+
+- Less frequent rebalancing as compared to height-balanced
+  implementations such as red-black or avl trees.
+
+- Logarithmic rank/at-rank indexed element access.
+
+
+This particular implementation also provides additional useful
+qualities such as lazy traversal and search to find a given
+key in only d comparisons (where d is depth of tree) rather than the
+traditional compare/low compare/high which takes on average
+(* 1.5 (- d 1)) comparisons.
+
 
 ## Usage
 
