@@ -1,7 +1,7 @@
 (ns wbtree.tree
   (:use     [clj-tuple])
-  (:require [wbtree.util :as util])
-  (:require [clojure.zip :as zip]))
+  (:require [wbtree.util :as util]))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,6 +19,11 @@
 ;;     'Balancing Weight-Balanced Trees'
 ;;     Journal of Functional Programming / 21 (3):
 ;;     Pages 287-307
+;;
+;; --  Oleg Kiselyov
+;;     'Towards the best collection API, A design of the overall optimal
+;;     collection traversal interface'
+;;     <http://pobox.com/~oleg/ftp/papers/LL3-collections-enumerators.txt>
 ;;
 ;; --  Nievergelt and Reingold (1972)
 ;;     'Binary Search Trees of Bounded Balance'

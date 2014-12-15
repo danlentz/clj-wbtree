@@ -1,0 +1,435 @@
+
+
+
+       A Scheme Implementation of Weight-Balanced Binary Trees.
+				   
+				   
+		Copyright (C) 1993-1994 Stephen Adams
+				   
+
+This document describes the interface to an R4RS Scheme implementation
+of weight-balanced binary trees.  The original design and
+implementation used the language ML and is described in:
+
+  Stephen Adams, Implemeting Sets Efficiently in a Functional
+    Language, CSTR 92-10, Department of Electronics and Computer
+    Science, University of Southampton, 1992
+
+The body of the file was derived from the MIT Scheme system
+documentation, which contains the following notice:
+
+
+
+
+Weight-Balanced Trees
+=====================
+
+   Balanced binary trees are a useful data structure for maintaining
+large sets of ordered objects or sets of associations whose keys are
+ordered. MIT Scheme has an comprehensive implementation of
+weight-balanced binary trees which has several advantages over the
+other data structures for large aggregates:
+
+   * In addition to the usual element-level operations like insertion,
+     deletion and lookup, there is a full complement of
+     collection-level operations, like set intersection, set union and
+     subset test, all of which are implemented with good orders of
+     growth in time and space. This makes weight balanced trees ideal
+     for rapid prototyping of functionally derived specifications.
+
+   * An element in a tree may be indexed by its position under the
+     ordering of the keys, and the position of an element may be
+     determined, both with reasonable efficiency.
+
+   * Operations to find and remove minimum element make weight
+     balanced trees simple to use for priority queues.
+
+   * The implementation is *functional* rather than *imperative*. This
+     means that operations like `inserting' an association in a tree
+     do not destroy the old tree, in much the same way that `(+ 1 x)'
+     modifies neither the constant 1 nor the value bound to `x'.  The
+     trees are referentially transparent thus the programmer need not
+     worry about copying the trees.  Referential transparency allows
+     space efficiency to be achieved by sharing subtrees.
+
+   These features make weight-balanced trees suitable for a wide range
+of applications, especially those that require large numbers of sets or
+discrete maps.  Applications that have a few global databases and/or
+concentrate on element-level operations like insertion and lookup are
+probably better off using hash-tables or red-black trees.
+
+   The *size* of a tree is the number of associations that it contains.
+ Weight balanced binary trees are balanced to keep the sizes of the
+subtrees of each node within a constant factor of each other. This
+ensures logarithmic times for single-path operations (like lookup and
+insertion).  A weight balanced tree takes space that is proportional to
+the number of associations in the tree.  For the current
+implementation, the constant of proportionality is six words per
+association.
+
+   Weight balanced trees can be used as an implementation for either
+discrete sets or discrete maps (associations).  Sets are implemented by
+ignoring the datum that is associated with the key.  Under this scheme
+if an associations exists in the tree this indicates that the key of the
+association is a member of the set.  Typically a value such as `()',
+`#t' or `#f' is associated with the key.
+
+   Many operations can be viewed as computing a result that, depending
+on whether the tree arguments are thought of as sets or maps, is known
+by two different names. An example is `wt-tree/member?', which, when
+regarding the tree argument as a set, computes the set membership
+operation, but, when regarding the tree as a discrete map,
+`wt-tree/member?' is the predicate testing if the map is defined at an
+element in its domain. Most names in this package have been chosen
+based on interpreting the trees as sets, hence the name
+`wt-tree/member?' rather than `wt-tree/defined-at?'.
+
+   The weight balanced tree implementation is a run-time-loadable
+option. To use weight balanced trees, execute
+
+     (load-option 'wt-tree)
+
+once before calling any of the procedures defined here.
+
+
+
+
+Construction of Weight-Balanced Trees
+-------------------------------------
+
+   Binary trees require there to be a total order on the keys used to
+arrange the elements in the tree.  Weight balanced trees are organized
+by *types*, where the type is an object encapsulating the ordering
+relation.  Creating a tree is a two-stage process.  First a tree type
+must be created from the predicate which gives the ordering.  The tree
+type is then used for making trees, either empty or singleton trees or
+trees from other aggregate structures like association lists.  Once
+created, a tree `knows' its type and the type is used to test
+compatibility between trees in operations taking two trees.  Usually a
+small number of tree types are created at the beginning of a program
+and used many times throughout the program's execution.
+
+ -- procedure+: make-wt-tree-type KEY<?
+     This procedure creates and returns a new tree type based on the
+     ordering predicate KEY<?. KEY<? must be a total ordering, having
+     the property that for all key values `a', `b' and `c':
+
+          (key<? a a)                         => #f
+          (and (key<? a b) (key<? b a))       => #f
+          (if (and (key<? a b) (key<? b c))
+              (key<? a c)
+              #t)                             => #t
+
+     Two key values are assumed to be equal if neither is less than the
+     other by KEY<?.
+
+     Each call to `make-wt-tree-type' returns a distinct value, and
+     trees are only compatible if their tree types are `eq?'. A
+     consequence is that trees that are intended to be used in binary
+     tree operations must all be created with a tree type originating
+     from the same call to `make-wt-tree-type'.
+
+ -- variable+: number-wt-type
+     A standard tree type for trees with numeric keys.  `Number-wt-type'
+     could have been defined by
+
+          (define number-wt-type (make-wt-tree-type  <))
+
+ -- variable+: string-wt-type
+     A standard tree type for trees with string keys.  `String-wt-type'
+     could have been defined by
+
+          (define string-wt-type (make-wt-tree-type  string<?))
+
+ -- procedure+: make-wt-tree WT-TREE-TYPE
+     This procedure creates and returns a newly allocated weight
+     balanced tree.  The tree is empty, i.e. it contains no
+     associations. WT-TREE-TYPE is a weight balanced tree type obtained
+     by calling `make-wt-tree-type'; the returned tree has this type.
+
+ -- procedure+: singleton-wt-tree WT-TREE-TYPE KEY DATUM
+     This procedure creates and returns a newly allocated weight
+     balanced tree.  The tree contains a single association, that of
+     DATUM with KEY.  WT-TREE-TYPE is a weight balanced tree type
+     obtained by calling `make-wt-tree-type'; the returned tree has
+     this type.
+
+ -- procedure+: alist->wt-tree TREE-TYPE ALIST
+     Returns a newly allocated weight-balanced tree that contains the
+     same associations as ALIST.  This procedure is equivalent to:
+
+          (lambda (type alist)
+            (let ((tree (make-wt-tree type)))
+              (for-each (lambda (association)
+                          (wt-tree/add! tree
+                                        (car association)
+                                        (cdr association)))
+                        alist)
+              tree))
+
+
+
+
+Basic Operations on Weight-Balanced Trees
+-----------------------------------------
+
+   This section describes the basic tree operations on weight balanced
+trees.  These operations are the usual tree operations for insertion,
+deletion and lookup, some predicates and a procedure for determining the
+number of associations in a tree.
+
+ -- procedure+: wt-tree? OBJECT
+     Returns `#t' if OBJECT is a weight-balanced tree, otherwise
+     returns `#f'.
+
+ -- procedure+: wt-tree/empty? WT-TREE
+     Returns `#t' if WT-TREE contains no associations, otherwise
+     returns `#f'.
+
+ -- procedure+: wt-tree/size WT-TREE
+     Returns the number of associations in WT-TREE, an exact
+     non-negative integer.  This operation takes constant time.
+
+ -- procedure+: wt-tree/add WT-TREE KEY DATUM
+     Returns a new tree containing all the associations in WT-TREE and
+     the association of DATUM with KEY.  If WT-TREE already had an
+     association for KEY, the new association overrides the old. The
+     average and worst-case times required by this operation are
+     proportional to the logarithm of the number of associations in
+     WT-TREE.
+
+ -- procedure+: wt-tree/add! WT-TREE KEY DATUM
+     Associates DATUM with KEY in WT-TREE and returns an unspecified
+     value.  If WT-TREE already has an association for KEY, that
+     association is replaced.  The average and worst-case times
+     required by this operation are proportional to the logarithm of
+     the number of associations in WT-TREE.
+
+ -- procedure+: wt-tree/member? KEY WT-TREE
+     Returns `#t' if WT-TREE contains an association for KEY, otherwise
+     returns `#f'.  The average and worst-case times required by this
+     operation are proportional to the logarithm of the number of
+     associations in WT-TREE.
+
+ -- procedure+: wt-tree/lookup WT-TREE KEY DEFAULT
+     Returns the datum associated with KEY in WT-TREE.  If WT-TREE
+     doesn't contain an association for KEY, DEFAULT is returned.  The
+     average and worst-case times required by this operation are
+     proportional to the logarithm of the number of associations in
+     WT-TREE.
+
+ -- procedure+: wt-tree/delete WT-TREE KEY
+     Returns a new tree containing all the associations in WT-TREE,
+     except that if WT-TREE contains an association for KEY, it is
+     removed from the result.  The average and worst-case times required
+     by this operation are proportional to the logarithm of the number
+     of associations in WT-TREE.
+
+ -- procedure+: wt-tree/delete! WT-TREE KEY
+     If WT-TREE contains an association for KEY the association is
+     removed.  Returns an unspecified value.  The average and worst-case
+     times required by this operation are proportional to the logarithm
+     of the number of associations in WT-TREE.
+
+
+
+
+Advanced Operations on Weight-Balanced Trees
+--------------------------------------------
+
+   In the following the *size* of a tree is the number of associations
+that the tree contains, and a *smaller* tree contains fewer
+associations.
+
+ -- procedure+: wt-tree/split< WT-TREE BOUND
+     Returns a new tree containing all and only the associations in
+     WT-TREE which have a key that is less than BOUND in the ordering
+     relation of the tree type of WT-TREE.  The average and worst-case
+     times required by this operation are proportional to the logarithm
+     of the size of WT-TREE.
+
+ -- procedure+: wt-tree/split> WT-TREE BOUND
+     Returns a new tree containing all and only the associations in
+     WT-TREE which have a key that is greater than BOUND in the
+     ordering relation of the tree type of WT-TREE.  The average and
+     worst-case times required by this operation are proportional to the
+     logarithm of size of WT-TREE.
+
+ -- procedure+: wt-tree/union WT-TREE-1 WT-TREE-2
+     Returns a new tree containing all the associations from both trees.
+     This operation is asymmetric: when both trees have an association
+     for the same key, the returned tree associates the datum from
+     WT-TREE-2 with the key.  Thus if the trees are viewed as discrete
+     maps then `wt-tree/union' computes the map override of WT-TREE-1 by
+     WT-TREE-2.  If the trees are viewed as sets the result is the set
+     union of the arguments. The worst-case time required by this
+     operation is proportional to the sum of the sizes of both trees.
+     If the minimum key of one tree is greater than the maximum key of
+     the other tree then the time required is at worst proportional to
+     the logarithm of the size of the larger tree.
+
+ -- procedure+: wt-tree/intersection WT-TREE-1 WT-TREE-2
+     Returns a new tree containing all and only those associations from
+     WT-TREE-1 which have keys appearing as the key of an association
+     in WT-TREE-2.  Thus the associated data in the result are those
+     from WT-TREE-1.  If the trees are being used as sets the result is
+     the set intersection of the arguments.  As a discrete map
+     operation, `wt-tree/intersection' computes the domain restriction
+     of WT-TREE-1 to (the domain of) WT-TREE-2. The time required by
+     this operation is never worse that proportional to the sum of the
+     sizes of the trees.
+
+ -- procedure+: wt-tree/difference WT-TREE-1 WT-TREE-2
+     Returns a new tree containing all and only those associations from
+     WT-TREE-1 which have keys that *do not* appear as the key of an
+     association in WT-TREE-2.  If the trees are viewed as sets the
+     result is the asymmetric set difference of the arguments.  As a
+     discrete map operation, it computes the domain restriction of
+     WT-TREE-1 to the complement of (the domain of) WT-TREE-2. The time
+     required by this operation is never worse that proportional to the
+     sum of the sizes of the trees.
+
+ -- procedure+: wt-tree/subset? WT-TREE-1 WT-TREE-2
+     Returns `#t' iff the key of each association in WT-TREE-1 is the
+     key of some association in WT-TREE-2, otherwise returns `#f'.
+     Viewed as a set operation, `wt-tree/subset?' is the improper subset
+     predicate. A proper subset predicate can be constructed:
+
+          (define (proper-subset? s1 s2)
+            (and (wt-tree/subset? s1 s2)
+                 (< (wt-tree/size s1) (wt-tree/size s2))))
+
+     As a discrete map operation, `wt-tree/subset?' is the subset test
+     on the domain(s) of the map(s).  In the worst-case the time
+     required by this operation is proportional to the size of
+     WT-TREE-1.
+
+ -- procedure+: wt-tree/set-equal? WT-TREE-1 WT-TREE-2
+     Returns `#t' iff for every association in WT-TREE-1 there is an
+     association in WT-TREE-2 that has the same key, and *vice versa*.
+
+     Viewing the arguments as sets `wt-tree/set-equal?' is the set
+     equality predicate.  As a map operation it determines if two maps
+     are defined on the same domain.
+
+     This procedure is equivalent to
+
+          (lambda (wt-tree-1 wt-tree-2)
+            (and (wt-tree/subset? wt-tree-1 wt-tree-2
+                 (wt-tree/subset? wt-tree-2 wt-tree-1)))
+
+     In the worst-case the time required by this operation is
+     proportional to the size of the smaller tree.
+
+ -- procedure+: wt-tree/fold COMBINER INITIAL WT-TREE
+     This procedure reduces WT-TREE by combining all the associations,
+     using an reverse in-order traversal, so the associations are
+     visited in reverse order.  COMBINER is a procedure of three
+     arguments: a key, a datum and the accumulated result so far. 
+     Provided COMBINER takes time bounded by a constant, `wt-tree/fold'
+     takes time proportional to the size of WT-TREE.
+
+     A sorted association list can be derived simply:
+
+          (wt-tree/fold  (lambda (key datum list)
+                           (cons (cons key datum) list))
+                         '()
+                         WT-TREE))
+
+     The data in the associations can be summed like this:
+
+          (wt-tree/fold  (lambda (key datum sum) (+ sum datum))
+                         0
+                         WT-TREE)
+
+ -- procedure+: wt-tree/for-each ACTION WT-TREE
+     This procedure traverses the tree in-order, applying ACTION to
+     each association. The associations are processed in increasing
+     order of their keys. ACTION is a procedure of two arguments which
+     take the key and datum respectively of the association. Provided
+     ACTION takes time bounded by a constant, `wt-tree/for-each' takes
+     time proportional to in the size of WT-TREE. The example prints
+     the tree:
+
+          (wt-tree/for-each (lambda (key value)
+                              (display (list key value)))
+                            WT-TREE))
+
+
+
+
+Indexing Operations on Weight-Balanced Trees
+--------------------------------------------
+
+   Weight balanced trees support operations that view the tree as sorted
+sequence of associations.  Elements of the sequence can be accessed by
+position, and the position of an element in the sequence can be
+determined, both in logarthmic time.
+
+ -- procedure+: wt-tree/index WT-TREE INDEX
+ -- procedure+: wt-tree/index-datum WT-TREE INDEX
+ -- procedure+: wt-tree/index-pair WT-TREE INDEX
+     Returns the 0-based INDEXth association of WT-TREE in the sorted
+     sequence under the tree's ordering relation on the keys.
+     `wt-tree/index' returns the INDEXth key, `wt-tree/index-datum'
+     returns the datum associated with the INDEXth key and
+     `wt-tree/index-pair' returns a new pair `(KEY . DATUM)' which is
+     the `cons' of the INDEXth key and its datum.  The average and
+     worst-case times required by this operation are proportional to
+     the logarithm of the number of associations in the tree.
+
+     These operations signal an error if the tree is empty, if
+     INDEX`<0', or if INDEX is greater than or equal to the number of
+     associations in the tree.
+
+     Indexing can be used to find the median and maximum keys in the
+     tree as follows:
+
+          median:   (wt-tree/index WT-TREE (quotient (wt-tree/size WT-TREE) 2))
+          
+          maximum:  (wt-tree/index WT-TREE (-1+ (wt-tree/size WT-TREE)))
+
+ -- procedure+: wt-tree/rank WT-TREE KEY
+     Determines the 0-based position of KEY in the sorted sequence of
+     the keys under the tree's ordering relation, or `#f' if the tree
+     has no association with for KEY.  This procedure returns either an
+     exact non-negative integer or `#f'.  The average and worst-case
+     times required by this operation are proportional to the logarithm
+     of the number of associations in the tree.
+
+ -- procedure+: wt-tree/min WT-TREE
+ -- procedure+: wt-tree/min-datum WT-TREE
+ -- procedure+: wt-tree/min-pair WT-TREE
+     Returns the association of WT-TREE that has the least key under
+     the tree's ordering relation. `wt-tree/min' returns the least key,
+     `wt-tree/min-datum' returns the datum associated with the least
+     key and `wt-tree/min-pair' returns a new pair `(key . datum)'
+     which is the `cons' of the minimum key and its datum. The average
+     and worst-case times required by this operation are proportional
+     to the logarithm of the number of associations in the tree.
+
+     These operations signal an error if the tree is empty. They could
+     be written
+          (define (wt-tree/min tree)        (wt-tree/index tree 0))
+          (define (wt-tree/min-datum tree)  (wt-tree/index-datum tree 0))
+          (define (wt-tree/min-pair tree)   (wt-tree/index-pair tree 0))
+
+ -- procedure+: wt-tree/delete-min WT-TREE
+     Returns a new tree containing all of the associations in WT-TREE
+     except the association with the least key under the WT-TREE's
+     ordering relation.  An error is signalled if the tree is empty. 
+     The average and worst-case times required by this operation are
+     proportional to the logarithm of the number of associations in the
+     tree.  This operation is equivalent to
+
+          (wt-tree/delete WT-TREE (wt-tree/min WT-TREE))
+
+ -- procedure+: wt-tree/delete-min! WT-TREE
+     Removes the association with the least key under the WT-TREE's
+     ordering relation.  An error is signalled if the tree is empty. 
+     The average and worst-case times required by this operation are
+     proportional to the logarithm of the number of associations in the
+     tree.  This operation is equivalent to
+
+          (wt-tree/delete! WT-TREE (wt-tree/min WT-TREE))
+

@@ -17,6 +17,11 @@ This is an implementation of a weight-balanced binary tree data
     Journal of Functional Programming / 21 (3):
     Pages 287-307
 
+-  Oleg Kiselyov
+    'Towards the best collection API, A design of the overall optimal
+    collection traversal interface'
+    <http://pobox.com/~oleg/ftp/papers/LL3-collections-enumerators.txt>
+
 -  Nievergelt and Reingold (1972)
     'Binary Search Trees of Bounded Balance'
     STOC '72 Proceedings
