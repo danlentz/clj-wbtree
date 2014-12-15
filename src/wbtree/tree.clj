@@ -194,12 +194,22 @@
    tree-structure into a seq representation without incurring the
    overhead of operating over the entire tree.  Used internally for
    implementation of higher-level collection api routines"
-  ([n] (node-cons-enum n (list)))
+  ([n] (node-cons-enum n nil))
   ([n enum]
      (if (null? n)
        enum
        (kvlr [k v l r] n
-         (node-cons-enum l (list (tuple k v) r enum))))))
+         (node-cons-enum l (list n r enum))))))
+
+(defn node-enum-first [enum]
+  (when (seq enum)
+    (first enum)))
+
+(defn node-enum-rest  [enum]
+  (when (seq enum)
+    (let [[x1 x2 x3] enum]
+      (when-not (and (nil? x2) (nil? x3))
+        (node-cons-enum x2 x3)))))
 
 
 (defn node-create
@@ -674,18 +684,23 @@
 ;; Aggregate Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn node-inorder-seq [n]
-  (lazy-seq
-    (when-not (null? n)
-      (cons (node-least n)
-        (node-inorder-seq (node-remove-least n))))))
-  
 
-(defn node-reverse-seq [n]
+(defn- node-enum-seq [enum]
+  (lazy-seq
+    (when-not (nil? enum)
+      (cons (node-enum-first enum)
+        (node-enum-seq (node-enum-rest enum))))))
+
+
+(defn node-seq [n]
+  (node-enum-seq (node-cons-enum n)))
+
+
+(defn node-seq-reverse [n]
   (lazy-seq
     (when-not (null? n)
       (cons (node-greatest n)
-        (node-reverse-seq (node-remove-greatest n))))))
+        (node-seq-reverse (node-remove-greatest n))))))
 
 
 
