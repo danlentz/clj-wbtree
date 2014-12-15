@@ -46,10 +46,12 @@ other binary tree algorithms:
 
 
 This particular implementation also provides additional useful
-qualities such as lazy traversal and search to find a given
-key in only d comparisons (where d is depth of tree) rather than the
-traditional compare/low compare/high which takes on average
-(* 1.5 (- d 1)) comparisons.
+qualities such as lazy traversal, partial enumeration, universal order,
+and search for a given key in only d comparisons (where d is depth of
+tree) rather than the traditional compare/low compare/high which takes
+on average (* 1.5 (- d 1)) comparisons.  In addition, a comprehensive
+functional binary tree api provides a rich collection of tools
+for the creation of efficient higher-order data structures.
 
 
 ## Usage
