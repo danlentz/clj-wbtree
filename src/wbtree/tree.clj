@@ -201,15 +201,33 @@
        (kvlr [k v l r] n
          (node-cons-enum l (list n r enum))))))
 
+
+(defn node-cons-enum-reverse
+  ([n] (node-cons-enum-reverse n nil))
+  ([n enum]
+     (if (null? n)
+       enum
+       (kvlr [k v l r] n
+         (node-cons-enum-reverse r (list n l enum))))))
+
+
 (defn node-enum-first [enum]
   (when (seq enum)
     (first enum)))
+
 
 (defn node-enum-rest  [enum]
   (when (seq enum)
     (let [[x1 x2 x3] enum]
       (when-not (and (nil? x2) (nil? x3))
         (node-cons-enum x2 x3)))))
+
+
+(defn node-enum-prior [enum]
+  (when (seq enum)
+    (let [[x1 x2 x3] enum]
+      (when-not (and (nil? x2) (nil? x3))
+        (node-cons-enum-reverse x2 x3)))))
 
 
 (defn node-create
@@ -691,16 +709,21 @@
       (cons (node-enum-first enum)
         (node-enum-seq (node-enum-rest enum))))))
 
+(defn- node-enum-seq-reverse [enum]
+  (lazy-seq
+    (when-not (nil? enum)
+      (cons (node-enum-first enum)
+        (node-enum-seq-reverse (node-enum-prior enum))))))
+
+
+
 
 (defn node-seq [n]
   (node-enum-seq (node-cons-enum n)))
 
 
 (defn node-seq-reverse [n]
-  (lazy-seq
-    (when-not (null? n)
-      (cons (node-greatest n)
-        (node-seq-reverse (node-remove-greatest n))))))
+  (node-enum-seq-reverse (node-cons-enum-reverse n)))
 
 
 
