@@ -793,11 +793,15 @@
         (node-enum-seq-reverse (node-enum-prior enum))))))
 
 
-(defn node-seq [n]
+(defn node-seq
+  "Return a (lazy) seq of nodes in tree rooted at n in the order they occur."
+  [n]
   (node-enum-seq (node-cons-enum n)))
 
 
-(defn node-seq-reverse [n]
+(defn node-seq-reverse
+  "Return a (lazy) seq of nodes in tree rooted at n in reverse order."
+  [n]
   (node-enum-seq-reverse (node-cons-enum-reverse n)))
 
 
