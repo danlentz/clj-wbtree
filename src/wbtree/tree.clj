@@ -504,7 +504,7 @@
     (node-call n
       (fn [key val l r]
         (cond
-          (xcompare< k key) (node-join key val (node-remove 1 k) r)
+          (xcompare< k key) (node-join key val (node-remove l k) r)
           (xcompare> k key) (node-join key val l (node-remove k r))
           true              (node-concat2 l r))))))
 
@@ -812,9 +812,21 @@
 
 
 (defn- make-integer-tree
-  ([size]           (reduce node-add nil (range size)))
-  ([start end]      (reduce node-add nil (range start end)))
-  ([start end step] (reduce node-add nil (range start end step))))
+  ([size]           (reduce node-add (null) (range size)))
+  ([start end]      (reduce node-add (null) (range start end)))
+  ([start end step] (reduce node-add (null) (range start end step))))
+
+
+(defn- make-integer-set
+  ([size]           (reduce conj #{} (range size)))
+  ([start end]      (reduce conj #{} (range start end)))
+  ([start end step] (reduce conj #{} (range start end step))))
+
+
+(defn- make-integer-sorted-set
+  ([size]           (reduce conj (sorted-set) (range size)))
+  ([start end]      (reduce conj (sorted-set) (range start end)))
+  ([start end step] (reduce conj (sorted-set) (range start end step))))
 
 
 ;; (def i10 (make-integer-tree 10))
