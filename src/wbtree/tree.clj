@@ -607,7 +607,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn node-union [n1 n2]
+(defn node-set-union [n1 n2]
   (cond
     (null? n1) n2
     (null? n2) n1
@@ -615,11 +615,12 @@
                  (let [l1 (node-split-lesser n1 ak)
                        r1 (node-split-greater n1 ak)]
                    (node-concat3 ak av
-                     (node-union l1 l)
-                     (node-union r1 r))))))
+                     (node-set-union l1 l)
+                     (node-set-union r1 r))))))
 
 
-(defn node-intersection [n1 n2]
+
+(defn node-set-intersection [n1 n2]
   (cond
     (null? n1) (null)
     (null? n2) (null)
@@ -628,14 +629,15 @@
                        r1 (node-split-greater n1 ak)]
                    (if (node-find n1 ak)
                      (node-concat3 ak av
-                       (node-intersection l1 l)
-                       (node-intersection r1 r))
+                       (node-set-intersection l1 l)
+                       (node-set-intersection r1 r))
                      (node-concat
-                       (node-intersection l1 l)
-                       (node-intersection r1 r)))))))
+                       (node-set-intersection l1 l)
+                       (node-set-intersection r1 r)))))))
 
 
-(defn node-difference [n1 n2]
+
+(defn node-set-difference [n1 n2]
   (cond
     (null? n1) (null)
     (null? n2) n2
@@ -643,8 +645,9 @@
                  (let [l1 (node-split-lesser n1 ak)
                        r1 (node-split-greater n1 ak)]
                    (node-concat
-                     (node-difference l1 l)
-                     (node-difference r1 r))))))
+                     (node-set-difference l1 l)
+                     (node-set-difference r1 r))))))
+
 
 
 (defn node-subset? [super sub]
@@ -668,6 +671,7 @@
                                    (subset? r1 r2)))))))))]
     (let [res (or (null? sub) (subset? sub super))]
       (if res true false))))
+
 
 
 (defn node-set-compare 
@@ -728,7 +732,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Aggregate Operations
+;; Fundamental Seq Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -745,8 +749,6 @@
         (node-enum-seq-reverse (node-enum-prior enum))))))
 
 
-
-
 (defn node-seq [n]
   (node-enum-seq (node-cons-enum n)))
 
@@ -759,6 +761,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Misc
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn- make-integer-tree
   ([size]           (reduce node-add nil (range size)))
