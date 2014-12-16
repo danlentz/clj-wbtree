@@ -771,7 +771,7 @@
   "Return a (lon-lazy) vector of all values in tree rooted at n
   in reverse-order."
   [n]
-  (node-fold-right #(conj %1 (-k %2)) [] n))
+  (node-fold-right #(conj %1 (-v %2)) [] n))
 
 
 
