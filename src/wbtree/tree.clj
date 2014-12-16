@@ -732,6 +732,46 @@
        true                 (+ rank (node-size (-l n))))))
   
     
+(defn node-vec
+  "Return a (lon-lazy) vector of all nodes in tree rooted at n in
+  the order they occur."
+  [n]
+  (node-fold-left conj [] n))
+
+    
+(defn node-vec-reverse
+  "Return a (lon-lazy) vector of all nodes in tree rooted at n in
+  reverse order."
+  [n]
+  (node-fold-right conj [] n))
+
+
+(defn node-key-vec
+  "Return a (lon-lazy) vector of all keys in tree rooted at n
+  in the order they occur."
+  [n]
+  (node-fold-left #(conj %1 (-k %2)) [] n))
+
+
+(defn node-key-vec-reverse
+  "Return a (lon-lazy) vector of all keys in tree rooted at n
+  in reverse-order."
+  [n]
+  (node-fold-right #(conj %1 (-k %2)) [] n))
+
+
+(defn node-value-vec
+  "Return a (lon-lazy) vector of all values in tree rooted at n
+  in the order they occur."
+  [n]
+  (node-fold-left #(conj %1 (-v %2)) [] n))
+
+
+(defn node-value-vec-reverse
+  "Return a (lon-lazy) vector of all values in tree rooted at n
+  in reverse-order."
+  [n]
+  (node-fold-right #(conj %1 (-k %2)) [] n))
 
 
 
