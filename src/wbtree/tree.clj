@@ -704,7 +704,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn node-at-rank [n index]
+(defn node-nth 
+  "Return nth node from the beginning of the ordered tree rooted at n."
+  [n index]
   (letfn [(srch [n index]
             (kvlr [_ _ l r] n
               (let [lsize (node-size l)]
@@ -718,6 +720,8 @@
 
 
 (defn node-rank
+  "Return the rank (sequential position) of a given KEY within the
+  ordered tree rooted at n."
   ([n k] (node-rank n k 0))
   ([n k rank]
      (cond
@@ -773,11 +777,11 @@
 ;; (def i30 (make-integer-tree 20 30))
 ;; (def i   (make-integer-tree 30))
 
-;; (map first (node-inorder-seq i))
+;; (map first (node-seq i))
 ;;   => (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
 ;;       25 26 27 28 29)
 
-;; (map first (node-reverse-seq i))
+;; (map first (node-seq-reverse i))
 ;;   => (29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8
 ;;       7 6 5 4 3 2 1 0)
 
