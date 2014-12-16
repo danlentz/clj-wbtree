@@ -670,6 +670,30 @@
       (if res true false))))
 
 
+(defn node-set-compare 
+  "return 3-way ordinal comparison of the trees n1 and n2 with the following
+  return-value semantics:
+
+   -1  -> n1 is LESS-THAN    n2
+    0  -> n1 is EQAL-TO      n2
+   +1  -> n1 is GREATER-THAN n2"
+  [n1 n2] 
+  (loop [e1 (node-cons-enum n1 nil)
+         e2 (node-cons-enum n2 nil)]      
+    (cond
+      (and (nil? e1) (nil? e2))  0
+      (nil? e1)                 -1
+      (nil? e2)                  1
+      true                       (let [[v1 r1 ee1] e1
+                                       [v2 r2 ee2] e2
+                                       c (xcompare (-k v1) (-k v2))]
+                                   (if-not (zero? c)
+                                     c
+                                     (recur
+                                       (node-cons-enum r1 ee1)
+                                       (node-cons-enum r2 ee2)))))))
+                                     
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fundamental Vector Operations
