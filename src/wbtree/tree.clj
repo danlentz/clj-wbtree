@@ -525,26 +525,26 @@
           best)))))
 
 
-(defn node-inorder-fold
-  "fold left"
+(defn node-fold-left
+  "Fold-left (reduce) the collection from least to greatest."
   [f base n]
   (letfn [(fold [base n]
             (if (null? n)
               base
-              (kvlr [k v l r] n
-                (fold (f n (fold base r)) l))))]
-    (fold base node)))
+              (kvlr [_ _ l r] n
+                (fold (f (fold base l) n) r))))]
+    (fold base n)))
 
 
-(defn node-reverse-fold
-  "fold right"
+(defn node-fold-right
+  "Fold-right (reduce) the collection from greatest to least."
   [f base n]
   (letfn [(fold [base n]
             (if (null? n)
               base
-              (kvlr [k v l r] n
-                (fold (f n (fold base l)) r))))]
-    (fold base node)))
+              (kvlr [_ _ l r] n
+                (fold (f (fold base r) n) l))))]
+    (fold base n)))
 
 
 (defn node-iter
