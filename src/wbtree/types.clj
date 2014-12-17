@@ -103,7 +103,7 @@
       (if (instance? IOrderedCollection o)                      
         (zero? (tree/node-set-compare root (.getRoot o)))
         (if (set? o)
-          (zero? (.compareTo (set (tree/node-key-vec root)) o))
+          (zero? (.equiv (set (tree/node-key-vec root)) o))
           (util/exception "unsupported comparison: " this o)))))
   (count [_]
     (tree/node-size root))
