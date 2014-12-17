@@ -521,7 +521,8 @@
             (if (null? n)
               base
               (kvlr [_ _ l r] n
-                (fold (f (fold base l) n) r))))]
+                (let [fbl (fold base l)]
+                  (recur (f fbl n) r)))))]
     (fold base n)))
 
 
@@ -532,7 +533,8 @@
             (if (null? n)
               base
               (kvlr [_ _ l r] n
-                (fold (f (fold base r) n) l))))]
+                (let [fbr (fold base r)]
+                  (recur (f fbr n) l)))))]
     (fold base n)))
 
 
