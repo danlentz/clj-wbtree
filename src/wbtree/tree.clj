@@ -402,12 +402,11 @@
   ([n k v]
      (if (null? n)
        (node-singleton k v)
-       (node-call n
-         (fn [key val l r]
-           (cond
-             (xcompare< k key) (node-join key val (node-add l k v) r)
-             (xcompare> k key) (node-join key val l (node-add r k v))
-             true              (node-create key v l r)))))))
+       (kvlr [key val l r] n
+         (cond
+           (xcompare< k key) (node-join key val (node-add l k v) r)
+           (xcompare> k key) (node-join key val l (node-add r k v))
+           true              (node-create key v l r))))))
 
 
 (defn node-concat3 [k v l r]
@@ -417,14 +416,12 @@
     true      (let [lw (node-weight l)
                     rw (node-weight r)]
                 (cond
-                  (< (* +delta+ lw) rw) (node-call r
-                                          (fn [k2 v2 l2 r2]
-                                            (node-join k2 v2
-                                              (node-concat3 k v l l2) r2)))
-                  (< (* +delta+ rw) lw) (node-call l
-                                          (fn [k1 v1 l1 r1]
-                                            (node-join k1 v1 l1
-                                              (node-concat3 k v r1 r))))
+                  (< (* +delta+ lw) rw) (kvlr [k2 v2 l2 r2] r
+                                          (node-join k2 v2
+                                            (node-concat3 k v l l2) r2))
+                  (< (* +delta+ rw) lw) (kvlr [k1 v1 l1 r1] l
+                                          (node-join k1 v1 l1
+                                            (node-concat3 k v r1 r)))
                   true                  (node-create k v l r)))))
 
 
@@ -434,7 +431,7 @@
   (cond
     (null? n)   (util/exception "least: empty tree")
     (null? (-l n)) n
-    true           (node-least (-l n))))
+    true           (recur (-l n))))
 
 
 (defn node-greatest
@@ -443,7 +440,7 @@
   (cond
     (null? n)   (util/exception "greatest: empty tree")
     (null? (-r n)) n
-    true           (node-greatest (-r n))))
+    true           (recur (-r n))))
 
 
 (defn node-remove-least
@@ -478,9 +475,8 @@
   (cond
     (null? l) r
     (null? r) l
-    true      (node-call (node-least r)
-                (fn [k v _ _]
-                  (node-join k v l (node-remove-least r))))))
+    true      (kvlr [k v _ _] (node-least r)
+                (node-join k v l (node-remove-least r)))))
 
 
 (defn node-concat [n1 n2]
@@ -495,12 +491,11 @@
 (defn node-remove [n k]
   (if (null? n)
     (null)
-    (node-call n
-      (fn [key val l r]
-        (cond
-          (xcompare< k key) (node-join key val (node-remove l k) r)
-          (xcompare> k key) (node-join key val l (node-remove k r))
-          true              (node-concat2 l r))))))
+    (kvlr [key val l r] n
+      (cond
+        (xcompare< k key) (node-join key val (node-remove l k) r)
+        (xcompare> k key) (node-join key val l (node-remove r k))
+        true              (node-concat2 l r)))))
 
 
 (defn node-find
@@ -511,8 +506,8 @@
   (letfn [(srch [this best]
             (cond
               (null? this)            best
-              (xcompare< k (-k this)) (srch (-l this) best)
-              true                    (srch (-r this) this)))]
+              (xcompare< k (-k this)) (recur (-l this) best)
+              true                    (recur (-r this) this)))]
     (let [best (srch n nil)]
       (when best
         (when-not (xcompare< (-k best) k)
