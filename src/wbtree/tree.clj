@@ -517,27 +517,23 @@
 (defn node-fold-left
   "Fold-left (reduce) the collection from least to greatest."
   [f base n]
-  (letfn [(fold [base n]
-            (if (null? n)
-              base
-              (kvlr [_ _ l r] n
-                (let [fbl (fold base l)]
-                  (recur (f fbl n) r)))))]
-    (fold base n)))
+  (loop [e (node-enumerator n) acc base]
+    (if (nil? e)
+      acc
+      (recur (node-enum-rest e)
+        (f acc (node-enum-first e))))))
 
 
 (defn node-fold-right
   "Fold-right (reduce) the collection from greatest to least."
   [f base n]
-  (letfn [(fold [base n]
-            (if (null? n)
-              base
-              (kvlr [_ _ l r] n
-                (let [fbr (fold base r)]
-                  (recur (f fbr n) l)))))]
-    (fold base n)))
+  (loop [e (node-enumerator-reverse n) acc base]
+    (if (nil? e)
+      acc
+      (recur (node-enum-prior e)
+        (f acc (node-enum-first e))))))
 
-
+ 
 (defn node-iter
   "For the side-effect, apply f to each node of the tree rooted at n"
   [n f]
