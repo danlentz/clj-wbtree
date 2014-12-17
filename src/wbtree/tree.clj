@@ -274,11 +274,10 @@
                  | Y |     | Z |            | X |     | Y |
                  '---'     '---'            '---'     '---'
   "
-  [ak av x r]
-  (node-call r
-    (fn [bk bv y z]
-      (node-create bk bv
-        (node-create ak av x y) z))))
+  [ak av x b]
+  (kvlr [bk bv y z] b
+    (node-create bk bv
+      (node-create ak av x y) z)))
 
 
 
@@ -305,14 +304,12 @@
               | y1|     | y2|  
               '---'     '---'
   "
-  [ak av x r]
-  (node-call r
-    (fn [ck cv b z]
-      (node-call b
-        (fn [bk bv y1 y2]
-          (node-create bk bv
-            (node-create ak av x y1)
-            (node-create ck cv y2 z)))))))
+  [ak av x c]
+  (kvlr [ck cv b z] c
+    (kvlr [bk bv y1 y2] b
+      (node-create bk bv
+        (node-create ak av x y1)
+        (node-create ck cv y2 z)))))
 
 
 (defn rotate-single-right
@@ -335,10 +332,9 @@
      | X |     | Y |                                    | Y |     | Z |  
      '---'     '---'                                    '---'     '---'  
   "
-  [bk bv l z]
-  (node-call l
-    (fn [ak av x y]
-      (node-create ak av x (node-create bk bv y z)))))
+  [bk bv a z]
+  (kvlr [ak av x y] a
+    (node-create ak av x (node-create bk bv y z))))
 
 
 (defn rotate-double-right
@@ -364,14 +360,12 @@
         | y1|     | y2|  
         '---'     '---'
   "
-  [ck cv l z]
-  (node-call l
-    (fn [ak av x b]
-      (node-call b
-        (fn [bk bv y1 y2]
-          (node-create bk bv
-            (node-create ak av x y1)
-            (node-create ck cv y2 z)))))))
+  [ck cv a z]
+  (kvlr [ak av x b] a
+    (kvlr [bk bv y1 y2] b
+      (node-create bk bv
+        (node-create ak av x y1)
+        (node-create ck cv y2 z)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
