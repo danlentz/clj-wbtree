@@ -603,8 +603,7 @@
     (null? n1) n2
     (null? n2) n1
     true       (kvlr [ak av l r] n2
-                 (let [l1 (node-split-lesser n1 ak)
-                       r1 (node-split-greater n1 ak)]
+                 (let [[l1 _ r1] (node-split n1 ak)]
                    (node-concat3 ak av
                      (node-set-union l1 l)
                      (node-set-union r1 r))))))
@@ -616,8 +615,7 @@
     (null? n1) (null)
     (null? n2) (null)
     true       (kvlr [ak av l r] n2
-                 (let [l1 (node-split-lesser n1 ak)
-                       r1 (node-split-greater n1 ak)]
+                 (let [[l1 _ r1] (node-split n1 ak)]
                    (if (node-find n1 ak)
                      (node-concat3 ak av
                        (node-set-intersection l1 l)
@@ -633,8 +631,7 @@
     (null? n1) (null)
     (null? n2) n2
     true       (kvlr [ak _ l r] n2
-                 (let [l1 (node-split-lesser n1 ak)
-                       r1 (node-split-greater n1 ak)]
+                 (let  [[l1 _ r1] (node-split n1 ak)]
                    (node-concat
                      (node-set-difference l1 l)
                      (node-set-difference r1 r))))))
@@ -702,8 +699,8 @@
             (kvlr [_ _ l r] n
               (let [lsize (node-size l)]
                 (cond
-                  (< index lsize) (srch l index)
-                  (> index lsize) (srch r (- index (inc lsize)))
+                  (< index lsize) (recur l index)
+                  (> index lsize) (recur r (- index (inc lsize)))
                   true            n))))]
     (if-not (and (<= 0 index) (< index (node-size n)))
       (util/exception "index out of range")
@@ -717,8 +714,8 @@
   ([n k rank]
      (cond
        (null? n)            nil
-       (xcompare< k (-k n)) (node-rank (-l n) k rank)
-       (xcompare> k (-k n)) (node-rank (-r n) k
+       (xcompare< k (-k n)) (recur (-l n) k rank)
+       (xcompare> k (-k n)) (recur (-r n) k
                               (+ 1 rank (node-size (-l n))))
        true                 (+ rank (node-size (-l n))))))
   
