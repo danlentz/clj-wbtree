@@ -111,7 +111,7 @@
   (tuple k v l r x))
 
 (defn node? [thing]
-  (= (type thing) clj_tuple.Tuple5))
+  (instance? clj_tuple.Tuple5 thing))
 
 
 
@@ -194,26 +194,26 @@
   (inc (node-size n)))
 
 
-(defn node-cons-enum
+(defn node-enumerator
   "Efficient mechanism to accomplish partial enumeration of
    tree-structure into a seq representation without incurring the
    overhead of operating over the entire tree.  Used internally for
    implementation of higher-level collection api routines"
-  ([n] (node-cons-enum n nil))
+  ([n] (node-enumerator n nil))
   ([n enum]
      (if (null? n)
        enum
        (kvlr [k v l r] n
-         (node-cons-enum l (list n r enum))))))
+         (recur l (list n r enum))))))
 
 
-(defn node-cons-enum-reverse
-  ([n] (node-cons-enum-reverse n nil))
+(defn node-enumerator-reverse
+  ([n] (node-enumerator-reverse n nil))
   ([n enum]
      (if (null? n)
        enum
        (kvlr [k v l r] n
-         (node-cons-enum-reverse r (list n l enum))))))
+         (recur r (list n l enum))))))
 
 
 (defn node-enum-first [enum]
@@ -225,14 +225,14 @@
   (when (seq enum)
     (let [[x1 x2 x3] enum]
       (when-not (and (nil? x2) (nil? x3))
-        (node-cons-enum x2 x3)))))
+        (node-enumerator x2 x3)))))
 
 
 (defn node-enum-prior [enum]
   (when (seq enum)
     (let [[x1 x2 x3] enum]
       (when-not (and (nil? x2) (nil? x3))
-        (node-cons-enum-reverse x2 x3)))))
+        (node-enumerator-reverse x2 x3)))))
 
 
 (defn node-create
@@ -246,7 +246,7 @@
   "Create and return a newly allocated weight balanced
   tree containing a single association, that value V with key K."
   [k v]
-  (node-create k v (null) (null) ))
+  (node-create k v (null) (null)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -682,8 +682,8 @@
     0  -> n1 is EQAL-TO      n2
    +1  -> n1 is GREATER-THAN n2"
   [n1 n2] 
-  (loop [e1 (node-cons-enum n1 nil)
-         e2 (node-cons-enum n2 nil)]      
+  (loop [e1 (node-enumerator n1 nil)
+         e2 (node-enumerator n2 nil)]      
     (cond
       (and (nil? e1) (nil? e2))  0
       (nil? e1)                 -1
@@ -694,8 +694,8 @@
                                    (if-not (zero? c)
                                      c
                                      (recur
-                                       (node-cons-enum r1 ee1)
-                                       (node-cons-enum r2 ee2)))))))
+                                       (node-enumerator r1 ee1)
+                                       (node-enumerator r2 ee2)))))))
                                      
 
 
@@ -796,13 +796,13 @@
 (defn node-seq
   "Return a (lazy) seq of nodes in tree rooted at n in the order they occur."
   [n]
-  (node-enum-seq (node-cons-enum n)))
+  (node-enum-seq (node-enumerator n)))
 
 
 (defn node-seq-reverse
   "Return a (lazy) seq of nodes in tree rooted at n in reverse order."
   [n]
-  (node-enum-seq-reverse (node-cons-enum-reverse n)))
+  (node-enum-seq-reverse (node-enumerator-reverse n)))
 
 
 
