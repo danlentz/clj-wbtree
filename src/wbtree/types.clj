@@ -67,9 +67,7 @@
       0
       (if (instance? IOrderedCollection o)                      
         (tree/node-set-compare root (.getRoot o))
-        (if (set? o)
-          (.compareTo (set (tree/node-vec root)) o)
-          (util/exception "unsupported comparison: " this o)))))
+        (util/exception "unsupported comparison: " this o))))
 
   java.util.Collection
   (toArray [_]
@@ -89,7 +87,7 @@
   (size [_]
     (tree/node-size root))
   (isEmpty [_]
-    (nil? root))
+    (tree/null? root))
   (iterator [this]
     (clojure.lang.SeqIterator. (seq this)))
   (containsAll [this s]
@@ -108,7 +106,7 @@
   (count [_]
     (tree/node-size root))
   (empty [_]
-    (->OrderedSet nil nil))
+    (->OrderedSet (tree/null) {}))
   (contains [_ k]
     (if (tree/node-find root k)
       true
@@ -128,7 +126,7 @@
   ([]
      (ordered-set []))
   ([coll]
-     (->OrderedSet (reduce tree/node-add nil coll) {})))
+     (->OrderedSet (reduce tree/node-add (tree/null) coll) {})))
 
 
 
