@@ -136,7 +136,7 @@
   x)
 
 (defn -kv [[k v _ _ _]]
-  (tuple k v))
+  (new clojure.lang.MapEntry k v))
 
 (defn -lr [[_ _ l r _]]
   (tuple l r))
