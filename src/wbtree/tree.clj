@@ -625,8 +625,8 @@
     (null? n1) (null)
     (null? n2) (null)
     true       (kvlr [ak av l r] n2
-                 (let [[l1 _ r1] (node-split n1 ak)]
-                   (if (node-find n1 ak)
+                 (let [[l1 x r1] (node-split n1 ak)]
+                   (if x 
                      (node-concat3 ak av
                        (node-set-intersection l1 l)
                        (node-set-intersection r1 r))
@@ -639,7 +639,7 @@
 (defn node-set-difference [n1 n2]
   (cond
     (null? n1) (null)
-    (null? n2) n2
+    (null? n2) n1
     true       (kvlr [ak _ l r] n2
                  (let  [[l1 _ r1] (node-split n1 ak)]
                    (node-concat
@@ -849,3 +849,25 @@
 
 ;; (map -k (node-seq (node-invert m)))
 ;;   => (:a :b :c :d :e)
+
+
+;; (def a (make-integer-tree 0 100))
+;; (def b (make-integer-tree 0 100 2))
+;; (def c (make-integer-tree 0 100 3))
+;; (def d (make-integer-tree 0 100 4))
+;; (def e (make-integer-tree 0 100 5))
+
+;; (map -k (node-seq (node-set-intersection b c)))
+;;   => (0 6 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96)
+
+;; (map -k (node-seq (node-set-union b c)))
+;;   => (0 2 3 4 6 8 9 10 12 14 15 16 18 20 21 22 24 26 27 28 30 32 33 34 36 38
+;;       39 40 42 44 45 46 48 50 51 52 54 56 57 58 60 62 63 64 66 68 69 70 72
+;;       74 75 76 78 80 81 82 84 86 87 88 90 92 93 94 96 98 99)
+
+;; (map -k (node-seq (node-set-difference b c)))
+;;   => (2 4 8 10 14 16 20 22 26 28 32 34 38 40 44 46 50 52 56 58 62 64 68 70
+;;       74 76 80 82 86 88 92 94 98)
+
+;; (map -k (node-seq (node-set-difference c b)))
+;;   => (3 9 15 21 27 33 39 45 51 57 63 69 75 81 87 93 99)
