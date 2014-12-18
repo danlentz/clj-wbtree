@@ -175,7 +175,7 @@
   clojure.lang.ILookup
   (valAt [_ k not-found]
     (if-let [found (tree/node-find root k)]
-      (tree/-kv found)
+      (tree/-v found)
       not-found))
   (valAt [this k]
     (.valAt this k nil))
@@ -275,4 +275,8 @@
 ;; (-> (ordered-map) (assoc :b "b") (assoc :a "a") (assoc :c "c"))
 ;;  => {:a "a", :b "b", :c "c"}
 
+;; ((ordered-map {:a "a", :b "b", :c "c", :d "d"}) :c)
+;;  => "c"
 
+;; ((ordered-map {:a "a", :b "b", :c "c", :d "d"}) :z ::not-found)
+;;  => :wbtree.types/not-found
