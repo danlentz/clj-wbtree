@@ -1,4 +1,4 @@
-(defproject danlentz/clj-wbtree "0.1.1-SNAPSHOT"
+(defproject danlentz/clj-wbtree "0.1.2-SNAPSHOT"
   :description "A 'Purely Functional' Weight Balanced Binary Tree"
   :url "http://github.com/danlentz/clj-fgl"
   :license {:name "Eclipse Public License"
