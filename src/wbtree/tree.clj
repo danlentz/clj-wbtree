@@ -533,7 +533,15 @@
       (recur (node-enum-prior e)
         (f acc (node-enum-first e))))))
 
- 
+
+(defn node-filter [p n]
+  (node-fold-left (fn [x y]
+                    (if (p y)
+                      x
+                      (node-remove x (-k y))))
+    n n))
+
+
 (defn node-iter
   "For the side-effect, apply f to each node of the tree rooted at n"
   [n f]
@@ -826,3 +834,6 @@
 ;;       7 6 5 4 3 2 1 0)
 
 
+
+;; (map first (node-seq (node-filter (comp even? -k) i)))
+;;   => (0 2 4 6 8 10 12 14 16 18 20 22 24 26 28)
