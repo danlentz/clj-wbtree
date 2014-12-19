@@ -373,7 +373,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn node-join
+(defn node-stitch
   "Join left and right subtrees at root k/v, performing a single or
   double rotation to balance the resulting tree, if needed.  Assumes
   all keys in l < k < all keys in r, and the relative weight balance
@@ -404,8 +404,8 @@
        (node-singleton k v)
        (kvlr [key val l r] n
          (cond
-           (xcompare< k key) (node-join key val (node-add l k v) r)
-           (xcompare> k key) (node-join key val l (node-add r k v))
+           (xcompare< k key) (node-stitch key val (node-add l k v) r)
+           (xcompare> k key) (node-stitch key val l (node-add r k v))
            true              (node-create key v l r))))))
 
 
@@ -417,10 +417,10 @@
                     rw (node-weight r)]
                 (cond
                   (< (* +delta+ lw) rw) (kvlr [k2 v2 l2 r2] r
-                                          (node-join k2 v2
+                                          (node-stitch k2 v2
                                             (node-concat3 k v l l2) r2))
                   (< (* +delta+ rw) lw) (kvlr [k1 v1 l1 r1] l
-                                          (node-join k1 v1 l1
+                                          (node-stitch k1 v1 l1
                                             (node-concat3 k v r1 r)))
                   true                  (node-create k v l r)))))
 
@@ -450,7 +450,7 @@
   (cond
     (null? n)       (util/exception "remove-least: empty tree")
     (null? (-l n))  (-r n)
-    true            (node-join (-k n) (-v n)
+    true            (node-stitch (-k n) (-v n)
                       (node-remove-least (-l n)) (-r n))))
 
 
@@ -461,7 +461,7 @@
   (cond
     (null? n)       (util/exception "remove-greatest: empty tree")
     (null? (-r n))  (-l n)
-    true            (node-join (-k n) (-v n) (-l n)
+    true            (node-stitch (-k n) (-v n) (-l n)
                       (node-remove-greatest (-r n)))))
 
 
@@ -476,7 +476,7 @@
     (null? l) r
     (null? r) l
     true      (kvlr [k v _ _] (node-least r)
-                (node-join k v l (node-remove-least r)))))
+                (node-stitch k v l (node-remove-least r)))))
 
 
 (defn node-concat [n1 n2]
@@ -493,8 +493,8 @@
     (null)
     (kvlr [key val l r] n
       (cond
-        (xcompare< k key) (node-join key val (node-remove l k) r)
-        (xcompare> k key) (node-join key val l (node-remove r k))
+        (xcompare< k key) (node-stitch key val (node-remove l k) r)
+        (xcompare> k key) (node-stitch key val l (node-remove r k))
         true              (node-concat2 l r)))))
 
 
