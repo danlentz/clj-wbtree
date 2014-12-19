@@ -778,29 +778,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn- node-enum-seq [enum]
-  (lazy-seq
-    (when-not (nil? enum)
-      (cons (node-enum-first enum)
-        (node-enum-seq (node-enum-rest enum))))))
-
-(defn- node-enum-seq-reverse [enum]
-  (lazy-seq
-    (when-not (nil? enum)
-      (cons (node-enum-first enum)
-        (node-enum-seq-reverse (node-enum-prior enum))))))
-
-
 (defn node-seq
   "Return a (lazy) seq of nodes in tree rooted at n in the order they occur."
   [n]
-  (node-enum-seq (node-enumerator n)))
+  (letfn [(node-enum-seq [enum]
+            (lazy-seq
+              (when-not (nil? enum)
+                (cons (node-enum-first enum)
+                  (node-enum-seq (node-enum-rest enum))))))]
+    (node-enum-seq (node-enumerator n))))
 
 
 (defn node-seq-reverse
   "Return a (lazy) seq of nodes in tree rooted at n in reverse order."
   [n]
-  (node-enum-seq-reverse (node-enumerator-reverse n)))
+  (letfn [(node-enum-seq-reverse [enum]
+            (lazy-seq
+              (when-not (nil? enum)
+                (cons (node-enum-first enum)
+                  (node-enum-seq-reverse (node-enum-prior enum))))))] 
+    (node-enum-seq-reverse (node-enumerator-reverse n))))
 
 
 
