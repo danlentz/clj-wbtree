@@ -403,10 +403,11 @@
      (if (null? n)
        (node-singleton k v)
        (kvlr [key val l r] n
-         (cond
-           (xcompare< k key) (node-stitch key val (node-add l k v) r)
-           (xcompare> k key) (node-stitch key val l (node-add r k v))
-           true              (node-create key v l r))))))
+         (let [c (xcompare k key)]
+           (cond
+             (neg? c) (node-stitch key val (node-add l k v) r)
+             (pos? c) (node-stitch key val l (node-add r k v))
+             true     (node-create key v l r)))))))
 
 
 (defn node-concat3 [k v l r]
@@ -492,10 +493,11 @@
   (if (null? n)
     (null)
     (kvlr [key val l r] n
-      (cond
-        (xcompare< k key) (node-stitch key val (node-remove l k) r)
-        (xcompare> k key) (node-stitch key val l (node-remove r k))
-        true              (node-concat2 l r)))))
+      (let [c (xcompare k key)]
+        (cond
+          (neg? c) (node-stitch key val (node-remove l k) r)
+          (pos? c) (node-stitch key val l (node-remove r k))
+          true     (node-concat2 l r))))))
 
 
 (defn node-find
