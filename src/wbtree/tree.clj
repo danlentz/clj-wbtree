@@ -44,6 +44,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+
+(def stats (atom {}))
+
+(defn reset-stats!! []
+  (reset! stats {}))
+
+(defn inc-stat! [stat]
+  (swap! stats assoc stat (inc (get @stats stat 0)))) 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Weight Balancing Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -73,6 +83,7 @@
 
 
 (defn xcompare [x y]
+  (inc-stat! :comparisons)
   (if (= (type x) (type y))
     (if (instance? Comparable x)
       (compare x y)
@@ -96,7 +107,7 @@
 
 (def %leaf% nil)
 
-(defn leaf [] %leaf%)
+(defn- leaf [] %leaf%)
 
 
 (defn null
@@ -108,11 +119,24 @@
   (= n (leaf)))
 
 (defn node [k v l r x]
+  (inc-stat! :nodes)
   (tuple k v l r x))
+
 
 (defn node? [thing]
   (instance? clj_tuple.Tuple5 thing))
 
+
+
+;; (util/avg-timing 10
+;;   (count (repeatedly 1000000 #(object-array (range 5)))))
+
+;; 568.8939
+
+;; (util/avg-timing 10
+;;   (count (repeatedly 1000000 #(apply tuple (range 5)))))
+
+;; 502.61289999999997
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -275,6 +299,7 @@
                  '---'     '---'            '---'     '---'
   "
   [ak av x b]
+  (inc-stat! :single-left)
   (kvlr [bk bv y z] b
     (node-create bk bv
       (node-create ak av x y) z)))
@@ -305,6 +330,7 @@
               '---'     '---'
   "
   [ak av x c]
+  (inc-stat! :double-left)
   (kvlr [ck cv b z] c
     (kvlr [bk bv y1 y2] b
       (node-create bk bv
@@ -333,6 +359,7 @@
      '---'     '---'                                    '---'     '---'  
   "
   [bk bv a z]
+  (inc-stat! :single-right)
   (kvlr [ak av x y] a
     (node-create ak av x (node-create bk bv y z))))
 
@@ -361,6 +388,7 @@
         '---'     '---'
   "
   [ck cv a z]
+  (inc-stat! :double-right)
   (kvlr [ak av x b] a
     (kvlr [bk bv y1 y2] b
       (node-create bk bv
@@ -593,11 +621,11 @@
   an element with key equal to k"
   [n k]
   (if (null? n)
-    [nil nil nil]
+    (tuple nil nil nil)
     (kvlr [ak v l r] n
       (let [c (xcompare k ak)]
         (cond
-          (zero? c) [l (list k v) r]
+          (zero? c) [l (tuple k v) r]
           (neg?  c) (let [[ll pres rl] (node-split l k)]
                       [ll pres (node-concat3 ak v rl r)])
           (pos?  c) (let [[lr pres rr] (node-split r k)]
@@ -697,6 +725,27 @@
                                        (node-enumerator r1 ee1)
                                        (node-enumerator r2 ee2)))))))
                                      
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Fundamental Map Operations
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn node-merge 
+  "Merge two maps in worts case linear time"
+  [n1 n2 merge-fn]
+  (cond
+    (null? n1) n2
+    (null? n2) n1
+    true       (kvlr [ak av l r] n2
+                 (let [[l1 x r1] (node-split n1 ak)
+                       val       (if x
+                                   (merge-fn ak av (-v x))
+                                   av)]                      
+                   (node-concat3 ak val
+                     (node-merge l1 l)
+                     (node-merge r1 r))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -809,9 +858,9 @@
 
 
 (defn- make-integer-tree
-  ([size]           (reduce node-add (null) (range size)))
-  ([start end]      (reduce node-add (null) (range start end)))
-  ([start end step] (reduce node-add (null) (range start end step))))
+  ([size]           (reduce node-add (null) (shuffle (range size))))
+  ([start end]      (reduce node-add (null) (shuffle (range start end))))
+  ([start end step] (reduce node-add (null) (shuffle (range start end step)))))
 
 
 (defn- make-integer-set
@@ -821,9 +870,9 @@
 
 
 (defn- make-integer-sorted-set
-  ([size]           (reduce conj (sorted-set) (range size)))
-  ([start end]      (reduce conj (sorted-set) (range start end)))
-  ([start end step] (reduce conj (sorted-set) (range start end step))))
+  ([size]           (reduce conj (sorted-set) (shuffle (range size))))
+  ([start end]      (reduce conj (sorted-set) (shuffle (range start end))))
+  ([start end step] (reduce conj (sorted-set) (shuffle (range start end step)))))
 
 
 ;; (def i10 (make-integer-tree 10))
@@ -870,3 +919,52 @@
 
 ;; (map -k (node-seq (node-set-difference c b)))
 ;;   => (3 9 15 21 27 33 39 45 51 57 63 69 75 81 87 93 99)
+
+
+;; (util/avg-timing 10 (count (make-integer-sorted-set 100000)))
+;;   => 127.12819999999999
+
+
+;; (do
+;;   (reset-stats!!)
+;;   (node-size (make-integer-tree 100000))
+;;   @stats)
+
+;; {:double-right 3483,
+;;  :single-left 8467,
+;;  :single-right 8645,
+;;  :double-left 3486,
+;;  :comparisons 1589177,
+;;  :nodes 1720227}
+
+
+;; {:single-right 1,
+;;  :double-left 1,
+;;  :single-left 1,
+;;  :comparisons 67,
+;;  :nodes 65,
+;;  :create 65}
+
+;; {:double-right 3488,
+;;  :single-left 8573,
+;;  :double-left 3541,
+;;  :single-right 8533,
+;;  :comparisons 2377536,
+;;  :nodes 1716435}
+
+;; (def d (make-integer-tree 0 1000000))
+
+
+;; (do
+;;   (reset-stats!!)
+;;   (node-size (node-add d 100))
+;;   @stats)
+
+;; {:nodes 16, :comparisons 16}
+
+
+
+;; {:nodes 17, :create 17, :comparisons 16}
+
+;; (Math/pow 2 21)
+
