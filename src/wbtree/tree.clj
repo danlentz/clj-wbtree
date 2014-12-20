@@ -733,7 +733,7 @@
 
 
 (defn node-merge 
-  "Merge two maps in worts case linear time"
+  "Merge two maps in worst case linear time"
   [n1 n2 merge-fn]
   (cond
     (null? n1) n2
