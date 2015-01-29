@@ -1,5 +1,4 @@
 (ns wbtree.tree
-  (:use     [clj-tuple])
   (:require [wbtree.util :as util]))
 
 
@@ -43,7 +42,12 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(set! *warn-on-reflection* true)
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Data Collection and Metrics
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def stats (atom {}))
 
@@ -51,7 +55,7 @@
   (reset! stats {}))
 
 (defn inc-stat! [stat]
-  (swap! stats assoc stat (inc (get @stats stat 0)))) 
+ #_ (swap! stats assoc stat (inc (get @stats stat 1)))) 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65,7 +69,7 @@
 ;;   require adjustment by means of a rotation operation.  The specific
 ;;   rotation to be performed is determined by +gamma+.
 
-(def +delta+ 3)
+(def ^:const +delta+ 3)
 
 ;; +gamma+:
 ;;   The secondary balancing rotation parameter that is used for the
@@ -73,7 +77,7 @@
 ;;   occur, once it has been decided based on +delta+ that a rotation is
 ;;   indeed required.
 
-(def +gamma+ 2)
+(def ^:const +gamma+ 2)
 
 
 
@@ -84,11 +88,12 @@
 
 (defn xcompare [x y]
   (inc-stat! :comparisons)
-  (if (= (type x) (type y))
+  (if (= (class x) (class y))
     (if (instance? Comparable x)
-      (compare x y)
-      (compare (hash x) (hash y)))
-    (compare (hash (type x)) (hash (type y)))))
+      (.compareTo ^Comparable x y)
+      (.compareTo ^Integer (hash x) (hash y)))
+    (.compareTo ^Integer (hash (class x)) (hash (class y)))))
+
 
 (defn xcompare< [x y]
   (neg? (xcompare x y)))
@@ -105,9 +110,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(def %leaf% nil)
 
-(defn- leaf [] %leaf%)
+(defn- leaf [] nil)
 
 
 (defn null
@@ -116,15 +120,20 @@
   (leaf))
 
 (defn null? [n]
-  (= n (leaf)))
-
-(defn node [k v l r x]
-  (inc-stat! :nodes)
-  (tuple k v l r x))
+  (nil? n))
 
 
-(defn node? [thing]
-  (instance? clj_tuple.Tuple5 thing))
+
+(deftype Node [k v l r ^long x])
+ 
+ (defn node [k v l r x]
+;   (inc-stat! :nodes)
+   (Node. k v l r x))
+ 
+ 
+ (defn node? [thing]
+   (instance? Node thing))
+ 
 
 
 
@@ -138,56 +147,70 @@
 
 ;; 502.61289999999997
 
+;; (util/avg-timing 10
+;;   (count (repeatedly 1000000 #(apply node (range 5)))))
+
+;; 382.1553
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constituent Accessors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn -k [[k _ _ _ _]]
-  k)
+(defn -k [^Node n]
+  (.k n))
 
-(defn -v [[_ v _ _ _]]
-  v)
+(defn -v [^Node n]
+  (.v n))
 
-(defn -l [[_ _ l _ _]]
-  l)
+(defn -l [^Node n]
+  (.l n))
 
-(defn -r [[_ _ _ r _]]
-  r)
+(defn -r [^Node n]
+  (.r n))
 
-(defn -x [[_ _ _ _ x]]
-  x)
+(defn -x [^Node n]
+  (.x n))
 
-(defn -kv [[k v _ _ _]]
-  (new clojure.lang.MapEntry k v))
+(defn -kv [^Node n]
+  (new clojure.lang.MapEntry (.k n) (.v n)))
 
-(defn -lr [[_ _ l r _]]
-  (tuple l r))
+(defn -lr [^Node n]
+  (list (.l n) (.r n)))
 
-(defn -kvlr [[k v l r _]]
-  (tuple k v l r))
+(defn -kvlr [^Node n]
+  (list (.k n) (.v n) (.l n) (.r n)))
+
+
 
 
 
 (defmacro kv
   "destructure node n: key value"
   [[ksym vsym] n & body]
-  `(let [[~ksym ~vsym _ _ _] ~n] 
+  `(let [^Node n# ~n
+         ~ksym (.k n#) ~vsym (.v n#)]
      ~@body))
 
 
 (defmacro kvlr
   "destructure node n: key value left right"
   [[ksym vsym lsym rsym] n & body]
-  `(let [[~ksym ~vsym ~lsym ~rsym _] ~n]
+  `(let [^Node n# ~n
+         ~ksym (.k n#) ~vsym (.v n#)
+         ~lsym (.l n#) ~rsym (.r n#)]
      ~@body))
 
 
 (defmacro kvlrx
   "destructure node n: key value left right size"
   [[ksym vsym lsym rsym xsym] n & body]
-  `(let [[~ksym ~vsym ~lsym ~rsym ~xsym] ~n]
+  `(let [^Node n# ~n
+         ~ksym (.k n#) ~vsym (.v n#)
+         ~lsym (.l n#) ~rsym (.r n#)
+         ~xsym (.x n#)]
      ~@body))
 
 
@@ -205,7 +228,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn node-size [n]
+(defn node-size ^long [n]
   (if (null? n)
     0
     (-x n)))
@@ -214,7 +237,7 @@
 (defn node-weight
   "returns node weight as appropriate for rotation calculations using
    the 'revised non-variant algorithm' for weight balanced binary tree."
-  [n]
+  ^long [n]
   (inc (node-size n)))
 
 
@@ -262,8 +285,8 @@
 (defn node-create
   "Join left and right subtrees at root k/v.
   Assumes all keys in l < k < all keys in r."
-  [k v l r]
-  (node k v l r (+ 1 (node-size l) (node-size r))))
+  [k v ^Node l ^Node r]
+  (Node. k v l r (+ 1 (if l (.x l) 0) (if r (.x r) 0))))
 
 
 (defn node-singleton 
@@ -621,11 +644,11 @@
   an element with key equal to k"
   [n k]
   (if (null? n)
-    (tuple nil nil nil)
+    (list nil nil nil)
     (kvlr [ak v l r] n
       (let [c (xcompare k ak)]
         (cond
-          (zero? c) [l (tuple k v) r]
+          (zero? c) [l (list k v) r]
           (neg?  c) (let [[ll pres rl] (node-split l k)]
                       [ll pres (node-concat3 ak v rl r)])
           (pos?  c) (let [[lr pres rr] (node-split r k)]
@@ -875,6 +898,9 @@
   ([start end step] (reduce conj (sorted-set) (shuffle (range start end step)))))
 
 
+(set! *warn-on-reflection* false)
+
+
 ;; (def i10 (make-integer-tree 10))
 ;; (def i30 (make-integer-tree 20 30))
 ;; (def i   (make-integer-tree 30))
@@ -921,50 +947,13 @@
 ;;   => (3 9 15 21 27 33 39 45 51 57 63 69 75 81 87 93 99)
 
 
-;; (util/avg-timing 10 (count (make-integer-sorted-set 100000)))
-;;   => 127.12819999999999
 
 
-;; (do
-;;   (reset-stats!!)
-;;   (node-size (make-integer-tree 100000))
-;;   @stats)
-
-;; {:double-right 3483,
-;;  :single-left 8467,
-;;  :single-right 8645,
-;;  :double-left 3486,
-;;  :comparisons 1589177,
-;;  :nodes 1720227}
+;; (util/avg-timing 10 (class (make-integer-sorted-set 100000)))
+;; 131.3212
 
 
-;; {:single-right 1,
-;;  :double-left 1,
-;;  :single-left 1,
-;;  :comparisons 67,
-;;  :nodes 65,
-;;  :create 65}
+;; (util/avg-timing 10 (class (make-integer-tree 100000)))
+;; 148.5932
 
-;; {:double-right 3488,
-;;  :single-left 8573,
-;;  :double-left 3541,
-;;  :single-right 8533,
-;;  :comparisons 2377536,
-;;  :nodes 1716435}
-
-;; (def d (make-integer-tree 0 1000000))
-
-
-;; (do
-;;   (reset-stats!!)
-;;   (node-size (node-add d 100))
-;;   @stats)
-
-;; {:nodes 16, :comparisons 16}
-
-
-
-;; {:nodes 17, :create 17, :comparisons 16}
-
-;; (Math/pow 2 21)
 
