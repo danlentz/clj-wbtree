@@ -66,7 +66,7 @@ for the creation of efficient higher-order data structures.
 With Leiningen:
 
 ```clj
-[danlentz/clj-wbtree "0.1.2-SNAPSHOT"]
+[danlentz/clj-wbtree "0.1.3-SNAPSHOT"]
 ```
 
 With Maven:
