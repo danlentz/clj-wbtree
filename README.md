@@ -75,13 +75,17 @@ With Maven:
 <dependency>
   <groupId>danlentz</groupId>
   <artifactId>clj-wbtree</artifactId>
-  <version>0.1.2-SNAPSHOT</version>
+  <version>0.1.3-SNAPSHOT</version>
 </dependency>
 ```
 
-
-
 ## Examples
+
+## Credits
+
+Warm appreciation and thanks for the skill and effort of Jason Wolfe and
+Zach Tellman whose collaborative help tuning this tree for Clojure were
+indespensible.
 
 ## License
 
