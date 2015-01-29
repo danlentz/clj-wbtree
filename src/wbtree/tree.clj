@@ -126,13 +126,13 @@
 
 (deftype Node [k v l r ^long x])
  
- (defn node [k v l r x]
-;   (inc-stat! :nodes)
-   (Node. k v l r x))
+(defn node [k v l r x]
+  (inc-stat! :nodes)
+  (Node. k v l r x))
  
  
- (defn node? [thing]
-   (instance? Node thing))
+(defn node? [thing]
+  (instance? Node thing))
  
 
 
@@ -143,12 +143,12 @@
 ;; 568.8939
 
 ;; (util/avg-timing 10
-;;   (count (repeatedly 1000000 #(apply tuple (range 5)))))
+;;   (class (repeatedly 1000000 #(apply tuple (range 5)))))
 
 ;; 502.61289999999997
 
 ;; (util/avg-timing 10
-;;   (count (repeatedly 1000000 #(apply node (range 5)))))
+;;   (class (repeatedly 1000000 #(apply node (range 5)))))
 
 ;; 382.1553
 
