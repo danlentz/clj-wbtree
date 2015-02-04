@@ -1,6 +1,6 @@
 # clj-wbtree
 
-Weight Balanced Functional Binary Tree (Hirai-Yamamoto Tree)
+#### _Weight Balanced Functional Binary Tree (Hirai-Yamamoto Tree)_
 ------
 [![Build Status](https://travis-ci.org/danlentz/clj-wbtree.svg)](https://travis-ci.org/danlentz/clj-wbtree)[![Dependency Status](https://www.versioneye.com/user/projects/54d1e1b73ca0840b19000070/badge.svg?style=flat)](https://www.versioneye.com/user/projects/54d1e1b73ca0840b19000070)
 
