@@ -64,23 +64,9 @@ for the creation of efficient higher-order data structures.
 
 ## Usage
 
-### The Most Recent Release
+### Leiningen
 
-With Leiningen:
-
-```clj
-[danlentz/clj-wbtree "0.1.3-SNAPSHOT"]
-```
-
-With Maven:
-
-```xml
-<dependency>
-  <groupId>danlentz</groupId>
-  <artifactId>clj-wbtree</artifactId>
-  <version>0.1.3-SNAPSHOT</version>
-</dependency>
-```
+[![Clojars Project](http://clojars.org/danlentz/clj-wbtree/latest-version.svg)](http://clojars.org/danlentz/clj-wbtree)
 
 ## Examples
 
